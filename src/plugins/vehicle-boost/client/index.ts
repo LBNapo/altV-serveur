@@ -25,7 +25,7 @@ function applyVehicleBoost() {
 
         native.applyForceToEntity(
             vehicle.scriptID,
-            1, // Force type (1 = relative force)
+            1, // Force type (1 = impulse force)
             forwardVector.x * boostForce,
             forwardVector.y * boostForce,
             0.0,
@@ -36,8 +36,8 @@ function applyVehicleBoost() {
             true, // isDirectionRel
             true, // ignoreUpVec
             true, // isForceRel
-            false, // p12
-            true // p13
+            false, // scaleByMass
+            true // triggerAudio
         );
 
         // Effet visuel: légère augmentation du RPM
@@ -94,10 +94,6 @@ alt.onServer(VehicleBoostEvents.toClient.applyBoost, () => {
 });
 
 // Arrêter le boost si le joueur sort du véhicule
-alt.on('enteredVehicle', (vehicle: alt.Vehicle, seat: number) => {
-    // Ne rien faire lors de l'entrée
-});
-
 alt.on('leftVehicle', (vehicle: alt.Vehicle, seat: number) => {
     if (seat === 0) {
         stopBoost();
