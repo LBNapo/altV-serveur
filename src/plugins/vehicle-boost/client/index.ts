@@ -10,7 +10,7 @@ function applyVehicleBoost() {
     const player = alt.Player.local;
     const vehicle = player.vehicle;
 
-    if (!vehicle || player.seat !== 1) {
+    if (!vehicle || player.seat !== 0) {
         stopBoost();
         return;
     }
@@ -99,7 +99,7 @@ alt.on('enteredVehicle', (vehicle: alt.Vehicle, seat: number) => {
 });
 
 alt.on('leftVehicle', (vehicle: alt.Vehicle, seat: number) => {
-    if (seat === 1) {
+    if (seat === 0) {
         stopBoost();
     }
 });

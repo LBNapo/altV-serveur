@@ -20,7 +20,7 @@ messenger.commands.register({
         }
 
         // Vérifier si le joueur est le conducteur
-        if (player.seat !== 1) {
+        if (player.seat !== 0) {
             messenger.message.send(player, {
                 type: 'warning',
                 content: 'Vous devez être au volant pour utiliser cette commande.',
