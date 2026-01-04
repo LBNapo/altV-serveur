@@ -88,11 +88,13 @@ civilianWaveStart: 5       // Civils à partir de la vague N
 
 ### Joueur
 - `/level` - Affiche niveau, XP et progression
+- `/families` - Démarre le mini-jeu Families
+- `/exitfamilies` - Quitte le mini-jeu Families
 
 ### Admin
 - `/givexp [player_id] [amount]` - Donne de l'XP à un joueur
 
-### Console Client
+### Console Client (Alternative)
 - `startfamilies` - Démarre le mini-jeu
 - `stopfamilies` - Quitte le mini-jeu
 

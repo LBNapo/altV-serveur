@@ -1,6 +1,7 @@
 import { useRebar } from '@Server/index.js';
 import * as alt from 'alt-server';
 import { getXpInfo } from './xpSystem.js';
+import { startMinigame, stopMinigame } from './minigame.js';
 
 const Rebar = useRebar();
 const messenger = Rebar.messenger.useMessenger();
@@ -16,6 +17,24 @@ messenger.commands.register({
             type: 'info',
             content: `📊 Level ${info.level} | XP: ${info.xp} | Prochain niveau: ${info.nextLevelXp} XP (${info.progress.toFixed(1)}%)`,
         });
+    },
+});
+
+// Commande pour démarrer le mini-jeu
+messenger.commands.register({
+    name: '/families',
+    desc: 'Démarre le mini-jeu Families.',
+    async callback(player) {
+        await startMinigame(player);
+    },
+});
+
+// Commande pour quitter le mini-jeu
+messenger.commands.register({
+    name: '/exitfamilies',
+    desc: 'Quitte le mini-jeu Families.',
+    async callback(player) {
+        stopMinigame(player, true);
     },
 });
 
