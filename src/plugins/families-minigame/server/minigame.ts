@@ -320,7 +320,9 @@ export async function onCivilianKilled(player: alt.Player, pedId: number): Promi
 
     // Apply XP penalty
     const info = getXpInfo(player);
-    const xpForCurrentLevel = info.xp - (info.nextLevelXp * (100 - info.progress) / 100);
+    const { getTotalXpForLevel } = await import('./xpSystem.js');
+    const currentLevelStartXp = getTotalXpForLevel(info.level);
+    const xpForCurrentLevel = info.xp - currentLevelStartXp;
     
     // Don't let them lose a level
     const maxLoss = Math.max(1, Math.floor(xpForCurrentLevel));
