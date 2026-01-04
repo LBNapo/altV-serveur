@@ -96,8 +96,12 @@ function stopBoost() {
     }
 
     // Réinitialiser le multiplicateur de puissance sur le véhicule stocké
-    if (boostedVehicle && boostedVehicle.valid) {
-        native.setVehicleCheatPowerIncrease(boostedVehicle.scriptID, 1.0);
+    if (boostedVehicle?.valid) {
+        try {
+            native.setVehicleCheatPowerIncrease(boostedVehicle.scriptID, 1.0);
+        } catch (error) {
+            // Véhicule détruit pendant la réinitialisation
+        }
     }
 
     boostedVehicle = undefined;
