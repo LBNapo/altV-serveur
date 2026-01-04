@@ -2,6 +2,8 @@ import { useRebar } from '@Server/index.js';
 import * as alt from 'alt-server';
 import { VehicleBoostEvents } from '../shared/events.js';
 
+const DRIVER_SEAT = 0;
+
 const Rebar = useRebar();
 const messenger = Rebar.messenger.useMessenger();
 
@@ -20,7 +22,7 @@ messenger.commands.register({
         }
 
         // Vérifier si le joueur est le conducteur
-        if (player.seat !== 0) {
+        if (player.seat !== DRIVER_SEAT) {
             messenger.message.send(player, {
                 type: 'warning',
                 content: 'Vous devez être au volant pour utiliser cette commande.',

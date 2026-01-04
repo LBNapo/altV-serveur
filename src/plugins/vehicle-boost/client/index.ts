@@ -2,15 +2,20 @@ import * as alt from 'alt-client';
 import * as native from 'natives';
 import { VehicleBoostEvents } from '../shared/events.js';
 
+const DRIVER_SEAT = 0;
+const BOOST_INTERVAL_MS = 50; // 50ms = 20 updates per second
+const BOOST_DURATION_MS = 30000; // 30 seconds
+
 let boostActive = false;
 let boostInterval: number | undefined;
+let boostedVehicle: alt.Vehicle | undefined;
 
 // Fonction pour appliquer le boost au véhicule
 function applyVehicleBoost() {
     const player = alt.Player.local;
     const vehicle = player.vehicle;
 
-    if (!vehicle || player.seat !== 0) {
+    if (!vehicle || player.seat !== DRIVER_SEAT) {
         stopBoost();
         return;
     }
@@ -54,17 +59,25 @@ function startBoost() {
         return;
     }
 
+    const player = alt.Player.local;
+    const vehicle = player.vehicle;
+
+    if (!vehicle) {
+        return;
+    }
+
     boostActive = true;
+    boostedVehicle = vehicle;
 
     // Créer un intervalle pour appliquer le boost en continu
     boostInterval = alt.setInterval(() => {
         applyVehicleBoost();
-    }, 10); // Toutes les 10ms pour une application fluide
+    }, BOOST_INTERVAL_MS);
 
-    // Arrêter le boost après 30 secondes
+    // Arrêter le boost après la durée définie
     alt.setTimeout(() => {
         stopBoost();
-    }, 30000);
+    }, BOOST_DURATION_MS);
 }
 
 // Arrêter le boost
@@ -80,12 +93,12 @@ function stopBoost() {
         boostInterval = undefined;
     }
 
-    // Réinitialiser le multiplicateur de puissance
-    const player = alt.Player.local;
-    const vehicle = player.vehicle;
-    if (vehicle) {
-        native.setVehicleCheatPowerIncrease(vehicle.scriptID, 1.0);
+    // Réinitialiser le multiplicateur de puissance sur le véhicule stocké
+    if (boostedVehicle && boostedVehicle.valid) {
+        native.setVehicleCheatPowerIncrease(boostedVehicle.scriptID, 1.0);
     }
+
+    boostedVehicle = undefined;
 }
 
 // Événement pour activer le boost
@@ -95,7 +108,7 @@ alt.onServer(VehicleBoostEvents.toClient.applyBoost, () => {
 
 // Arrêter le boost si le joueur sort du véhicule
 alt.on('leftVehicle', (vehicle: alt.Vehicle, seat: number) => {
-    if (seat === 0) {
+    if (seat === DRIVER_SEAT) {
         stopBoost();
     }
 });

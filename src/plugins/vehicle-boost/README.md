@@ -37,15 +37,17 @@ Active un boost temporaire sur le véhicule actuel du joueur.
 ## Paramètres modifiables
 
 Dans `client/index.ts`:
-- `boostForce` (ligne 24): Force du boost (défaut: 8.0)
-- `setVehicleCheatPowerIncrease` (ligne 44): Multiplicateur de puissance (défaut: 1.5)
-- Durée du boost (ligne 66): 30000ms = 30 secondes
-- Fréquence d'application (ligne 62): 10ms (intervalle de mise à jour)
+- `boostForce` (ligne 27): Force du boost (défaut: 8.0)
+- `setVehicleCheatPowerIncrease` (ligne 47): Multiplicateur de puissance (défaut: 1.5)
+- `BOOST_DURATION_MS` (ligne 7): Durée du boost (défaut: 30000ms = 30 secondes)
+- `BOOST_INTERVAL_MS` (ligne 6): Fréquence d'application (défaut: 50ms = 20 updates/sec)
+- `DRIVER_SEAT` (ligne 5): Index du siège conducteur (défaut: 0)
 
 ## Notes techniques
 
-- Le boost est appliqué toutes les 10ms pour une expérience fluide
+- Le boost est appliqué toutes les 50ms (20 fois par seconde) pour un bon équilibre performance/fluidité
 - Le boost s'arrête automatiquement si le joueur quitte le siège conducteur (seat 0)
+- Référence au véhicule stockée pour éviter les erreurs lors de la sortie
 - Utilise les natives GTA V pour l'application de force et la modification de puissance
 - Compatible avec le système de permissions ReBar
 - Force appliquée en mode "impulse force" pour une accélération naturelle
