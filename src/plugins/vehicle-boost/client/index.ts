@@ -5,6 +5,9 @@ import { VehicleBoostEvents } from '../shared/events.js';
 const DRIVER_SEAT = 0;
 const BOOST_INTERVAL_MS = 50; // 50ms = 20 updates per second
 const BOOST_DURATION_MS = 30000; // 30 seconds
+const BOOST_FORCE = 8.0; // Forward acceleration multiplier
+const BOOST_POWER_MULTIPLIER = 1.5; // Engine power multiplier
+const CONTROL_SPRINT = 21; // Shift key control code
 
 let boostActive = false;
 let boostInterval: number | undefined;
@@ -21,18 +24,17 @@ function applyVehicleBoost() {
     }
 
     // Vérifier si le joueur appuie sur Shift
-    const isShiftPressed = native.isControlPressed(0, 21); // 21 = Sprint/Shift
+    const isShiftPressed = native.isControlPressed(0, CONTROL_SPRINT);
 
     if (isShiftPressed) {
         // Appliquer une force vers l'avant
         const forwardVector = native.getEntityForwardVector(vehicle.scriptID);
-        const boostForce = 8.0; // Force du boost
 
         native.applyForceToEntity(
             vehicle.scriptID,
             1, // Force type (1 = impulse force)
-            forwardVector.x * boostForce,
-            forwardVector.y * boostForce,
+            forwardVector.x * BOOST_FORCE,
+            forwardVector.y * BOOST_FORCE,
             0.0,
             0.0,
             0.0,
@@ -46,7 +48,7 @@ function applyVehicleBoost() {
         );
 
         // Effet visuel: légère augmentation du RPM
-        native.setVehicleCheatPowerIncrease(vehicle.scriptID, 1.5);
+        native.setVehicleCheatPowerIncrease(vehicle.scriptID, BOOST_POWER_MULTIPLIER);
     } else {
         // Réinitialiser le multiplicateur de puissance
         native.setVehicleCheatPowerIncrease(vehicle.scriptID, 1.0);

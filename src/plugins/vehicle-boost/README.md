@@ -36,12 +36,13 @@ Active un boost temporaire sur le véhicule actuel du joueur.
 
 ## Paramètres modifiables
 
-Dans `client/index.ts`:
-- `boostForce` (ligne 27): Force du boost (défaut: 8.0)
-- `setVehicleCheatPowerIncrease` (ligne 47): Multiplicateur de puissance (défaut: 1.5)
-- `BOOST_DURATION_MS` (ligne 7): Durée du boost (défaut: 30000ms = 30 secondes)
-- `BOOST_INTERVAL_MS` (ligne 6): Fréquence d'application (défaut: 50ms = 20 updates/sec)
-- `DRIVER_SEAT` (ligne 5): Index du siège conducteur (défaut: 0)
+Dans `client/index.ts`, les constantes configurables sont définies au début du fichier:
+- `BOOST_FORCE`: Force du boost (défaut: 8.0)
+- `BOOST_POWER_MULTIPLIER`: Multiplicateur de puissance (défaut: 1.5)
+- `BOOST_DURATION_MS`: Durée du boost (défaut: 30000ms = 30 secondes)
+- `BOOST_INTERVAL_MS`: Fréquence d'application (défaut: 50ms = 20 updates/sec)
+- `CONTROL_SPRINT`: Code de contrôle pour Shift (défaut: 21)
+- `DRIVER_SEAT`: Index du siège conducteur (défaut: 0)
 
 ## Notes techniques
 
