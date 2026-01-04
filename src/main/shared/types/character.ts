@@ -171,4 +171,18 @@ export interface Character extends BaseCharacter, PermissionsDocumentMixin, Grou
      * @type {(alt.IWeapon & { ammo: number })[]}
      */
     weapons?: (alt.IWeapon & { ammo: number })[];
+
+    /**
+     * Player experience points
+     *
+     * @type {number}
+     */
+    xp?: number;
+
+    /**
+     * Player level
+     *
+     * @type {number}
+     */
+    level?: number;
 }
