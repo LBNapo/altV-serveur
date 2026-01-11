@@ -11,6 +11,9 @@ let civilianPeds: Set<number> = new Set();
 let boundaryMarker: number | undefined;
 let pedBlips: Map<number, number> = new Map(); // Track blips for each ped
 let respawnTimer: number | undefined;
+let deathScreenActive = false;
+let deathCountdown = 0;
+let everyTickHandler: number | undefined;
 
 /**
  * Start the minigame
@@ -46,6 +49,18 @@ function stopMinigame(): void {
     if (!minigameActive) return;
 
     minigameActive = false;
+    deathScreenActive = false;
+
+    // Clear timers
+    if (respawnTimer) {
+        alt.clearInterval(respawnTimer);
+        respawnTimer = undefined;
+    }
+    
+    if (everyTickHandler) {
+        alt.clearEveryTick(everyTickHandler);
+        everyTickHandler = undefined;
+    }
 
     // Remove effects
     native.setPlayerMeleeWeaponDamageModifier(alt.Player.local.scriptID, 1.0);
@@ -222,7 +237,10 @@ function startPedDeathCheck(): void {
  * Handle player death with countdown and respawn (GTA-style WASTED screen)
  */
 function handlePlayerDeath(): void {
-    if (!minigameActive) return;
+    if (!minigameActive || deathScreenActive) return;
+
+    deathScreenActive = true;
+    deathCountdown = 5;
 
     // Notify server
     alt.emitServer(FamiliesMinigameEvents.toServer.playerDied);
@@ -231,37 +249,44 @@ function handlePlayerDeath(): void {
     native.setFadeOutAfterDeath(false); // Don't fade out
     native.networkSetInSpectatorMode(false, alt.Player.local.scriptID);
     
-    let countdown = 5;
+    // Start every-tick render for death screen
+    if (!everyTickHandler) {
+        everyTickHandler = alt.everyTick(() => {
+            if (deathScreenActive) {
+                // Draw WASTED-style text
+                native.setTextFont(4);
+                native.setTextScale(1.5, 1.5);
+                native.setTextColour(255, 0, 0, 255);
+                native.setTextOutline();
+                native.setTextCentre(true);
+                native.beginTextCommandDisplayText('STRING');
+                native.addTextComponentSubstringPlayerName(`WASTED`);
+                native.endTextCommandDisplayText(0.5, 0.3, 0);
+                
+                // Draw countdown
+                native.setTextFont(0);
+                native.setTextScale(0.8, 0.8);
+                native.setTextColour(255, 255, 255, 255);
+                native.setTextCentre(true);
+                native.beginTextCommandDisplayText('STRING');
+                native.addTextComponentSubstringPlayerName(`Respawn dans ${deathCountdown}s`);
+                native.endTextCommandDisplayText(0.5, 0.4, 0);
+            }
+        });
+    }
     
-    // Show countdown using scaleform (GTA-style)
+    // Countdown timer
     respawnTimer = alt.setInterval(() => {
-        // Draw WASTED-style text
-        native.setTextFont(4);
-        native.setTextScale(1.5, 1.5);
-        native.setTextColour(255, 0, 0, 255);
-        native.setTextOutline();
-        native.setTextCentre(true);
-        native.beginTextCommandDisplayText('STRING');
-        native.addTextComponentSubstringPlayerName(`WASTED`);
-        native.endTextCommandDisplayText(0.5, 0.3, 0);
+        deathCountdown--;
         
-        // Draw countdown
-        native.setTextFont(0);
-        native.setTextScale(0.8, 0.8);
-        native.setTextColour(255, 255, 255, 255);
-        native.setTextCentre(true);
-        native.beginTextCommandDisplayText('STRING');
-        native.addTextComponentSubstringPlayerName(`Respawn dans ${countdown}s`);
-        native.endTextCommandDisplayText(0.5, 0.4, 0);
-        
-        countdown--;
-        
-        if (countdown < 0) {
+        if (deathCountdown < 0) {
             // Clear timer
             if (respawnTimer) {
                 alt.clearInterval(respawnTimer);
                 respawnTimer = undefined;
             }
+            
+            deathScreenActive = false;
             
             // Respawn player
             respawnPlayer();
@@ -298,6 +323,21 @@ function respawnPlayer(): void {
     native.setPlayerWeaponDamageModifier(alt.Player.local.scriptID, 1.5);
     native.animpostfxPlay('RaceTurbo', 0, false);
     native.setTimecycleModifier('prologue_light');
+    
+    // RE-AGGRO ALL EXISTING PEDS TO PLAYER
+    console.log(`[Families Client] Re-aggroing ${pedTargets.size} peds to player after respawn`);
+    pedTargets.forEach((ped, pedId) => {
+        if (ped.valid) {
+            try {
+                const pedScriptId = ped.scriptID;
+                // Re-task to combat player
+                native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);
+                console.log(`[Families Client] Re-aggroed ped ${pedId} to player`);
+            } catch (e) {
+                console.error(`[Families Client] Failed to re-aggro ped ${pedId}:`, e);
+            }
+        }
+    });
 }
 
 /**

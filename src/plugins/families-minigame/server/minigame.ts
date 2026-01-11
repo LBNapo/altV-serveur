@@ -242,33 +242,38 @@ function spawnWave(player: alt.Player, session: MinigameSession): void {
         content: `🌊 Vague ${wave} - ${enemyCount} ennemis!`,
     });
 
-    // Spawn enemies around the zone
+    // Spawn enemies around the zone - SYNCHRONOUSLY to avoid wave skip
+    console.log(`[Families] Starting spawn of ${enemyCount} enemies for wave ${wave}`);
     for (let i = 0; i < enemyCount; i++) {
-        setTimeout(() => {
-            if (!session.active) return;
+        if (!session.active) return;
 
-            const angle = (Math.PI * 2 * i) / enemyCount;
-            const distance = 20 + Math.random() * 30;
-            const x = MINIGAME_ZONE.center.x + Math.cos(angle) * distance;
-            const y = MINIGAME_ZONE.center.y + Math.sin(angle) * distance;
-            const z = MINIGAME_ZONE.center.z;
+        const angle = (Math.PI * 2 * i) / enemyCount;
+        const distance = 20 + Math.random() * 30;
+        const x = MINIGAME_ZONE.center.x + Math.cos(angle) * distance;
+        const y = MINIGAME_ZONE.center.y + Math.sin(angle) * distance;
+        const z = MINIGAME_ZONE.center.z;
 
-            const model = FAMILIES_PED_MODELS[Math.floor(Math.random() * FAMILIES_PED_MODELS.length)];
-            const ped = new alt.Ped(model, new alt.Vector3(x, y, z), new alt.Vector3(0, 0, 0));
+        const model = FAMILIES_PED_MODELS[Math.floor(Math.random() * FAMILIES_PED_MODELS.length)];
+        const ped = new alt.Ped(model, new alt.Vector3(x, y, z), new alt.Vector3(0, 0, 0));
 
-            // Give weapon to enemy
-            const weapon = weaponSet.weapons[Math.floor(Math.random() * weaponSet.weapons.length)];
-            ped.health = enemyHealth;
-            ped.maxHealth = enemyHealth;
-            ped.armour = Math.floor(wave * 10);
+        // Give weapon to enemy
+        const weapon = weaponSet.weapons[Math.floor(Math.random() * weaponSet.weapons.length)];
+        
+        // Set health IMMEDIATELY to mark as initialized
+        ped.maxHealth = enemyHealth;
+        ped.health = enemyHealth;
+        ped.armour = Math.floor(wave * 10);
 
-            // Store reference
-            session.enemies.push(ped);
+        // Store reference IMMEDIATELY
+        session.enemies.push(ped);
 
-            // Set ped to attack player (done on client side)
-            alt.emitClient(player, FamiliesMinigameEvents.toClient.spawnWave, ped.id, weapon);
-        }, i * 500); // Stagger spawns
+        // Set ped to attack player (done on client side)
+        alt.emitClient(player, FamiliesMinigameEvents.toClient.spawnWave, ped.id, weapon);
+        
+        console.log(`[Families] Spawned ped ${ped.id} for wave ${wave} - maxHealth: ${ped.maxHealth}`);
     }
+    
+    console.log(`[Families] Wave ${wave} spawn complete. Total enemies: ${session.enemies.length}`);
 
     // Spawn vehicle every 5 waves
     if (wave % WAVE_CONFIG.vehicleWaveInterval === 0) {
