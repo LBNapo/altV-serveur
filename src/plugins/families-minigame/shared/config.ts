@@ -2,8 +2,8 @@ import * as alt from 'alt-shared';
 
 // Zone du mini-jeu (quartier Families - Forum Drive)
 export const MINIGAME_ZONE = {
-    center: { x: 120.0, y: -1930.0, z: 21.0 } as alt.IVector3,
-    radius: 150, // 150 mètres de rayon
+    center: { x: -14.24, y: -1442.61, z: 31.10 } as alt.IVector3,
+    radius: 50, // 50 mètres de rayon
 };
 
 // Configuration XP

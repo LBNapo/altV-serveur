@@ -107,9 +107,10 @@ civilianWaveStart: 5       // Civils à partir de la vague N
 
 ## Zone de Jeu
 
-- Centre: (120.0, -1930.0, 21.0)
-- Rayon: 150 mètres
+- Centre: (-14.24, -1442.61, 31.10)
+- Rayon: 50 mètres
 - Quartier: Forum Drive / Families
+- Marqueur visuel: Cercle vert au sol indiquant la zone
 
 ## Ennemis
 

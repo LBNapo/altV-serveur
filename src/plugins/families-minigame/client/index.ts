@@ -1,12 +1,14 @@
 import * as alt from 'alt-client';
 import * as native from 'natives';
 import { FamiliesMinigameEvents } from '../shared/events.js';
+import { MINIGAME_ZONE } from '../shared/config.js';
 
 let minigameActive = false;
 let rampageEffect: number | undefined;
 let checkInterval: number | undefined;
 let pedTargets: Map<number, alt.Ped> = new Map();
 let civilianPeds: Set<number> = new Set();
+let boundaryMarker: number | undefined;
 
 /**
  * Start the minigame
@@ -29,6 +31,9 @@ function startMinigame(playerLevel: number): void {
     native.animpostfxPlay('RaceTurbo', 0, false);
     native.setTimecycleModifier('prologue_light');
     
+    // Draw boundary marker (green circle)
+    drawBoundaryMarker();
+    
     // Start checking for dead peds
     startPedDeathCheck();
 
@@ -49,6 +54,12 @@ function stopMinigame(): void {
     native.animpostfxStop('RaceTurbo');
     native.clearTimecycleModifier();
 
+    // Remove boundary marker
+    if (boundaryMarker !== undefined) {
+        native.deleteCheckpoint(boundaryMarker);
+        boundaryMarker = undefined;
+    }
+
     // Stop checking
     if (checkInterval) {
         alt.clearInterval(checkInterval);
@@ -60,6 +71,25 @@ function stopMinigame(): void {
     civilianPeds.clear();
 
     console.log('Minigame stopped!');
+}
+
+/**
+ * Draw boundary marker (green circle)
+ */
+function drawBoundaryMarker(): void {
+    // Create a green checkpoint ring at ground level to show the boundary
+    boundaryMarker = native.createCheckpoint(
+        45, // Ring checkpoint type
+        MINIGAME_ZONE.center.x,
+        MINIGAME_ZONE.center.y,
+        MINIGAME_ZONE.center.z,
+        MINIGAME_ZONE.center.x,
+        MINIGAME_ZONE.center.y,
+        MINIGAME_ZONE.center.z + 2,
+        MINIGAME_ZONE.radius * 2, // Diameter
+        0, 255, 0, 100, // Green with transparency
+        0
+    );
 }
 
 /**
@@ -84,27 +114,34 @@ function onSpawnWave(pedId: number, weaponHash: number): void {
         // Make ped hostile
         const pedScriptId = ped.scriptID;
         
-        // Task combat player
-        native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);
-        native.setPedCombatAttributes(pedScriptId, 46, true); // Always fight
-        native.setPedCombatAttributes(pedScriptId, 5, true); // Can use cover
-        native.setPedCombatMovement(pedScriptId, 2); // Offensive movement
-        native.setPedCombatRange(pedScriptId, 2); // Long range
-        
-        // Give weapon
+        // Give weapon first
         native.giveWeaponToPed(pedScriptId, weaponHash, 9999, false, true);
         native.setCurrentPedWeapon(pedScriptId, weaponHash, true);
         
         // Set relationship to hate player
         native.setPedRelationshipGroupHash(pedScriptId, native.getHashKey('HATES_PLAYER'));
         
-        // Make them not flee
+        // Make them not flee and always fight
         native.setPedFleeAttributes(pedScriptId, 0, false);
+        native.setPedCombatAttributes(pedScriptId, 46, true); // Always fight
+        native.setPedCombatAttributes(pedScriptId, 5, true); // Can use cover
+        native.setPedCombatMovement(pedScriptId, 3); // Very aggressive movement
+        native.setPedCombatRange(pedScriptId, 2); // Long range
         native.setPedCombatAbility(pedScriptId, 2); // Very good combat ability
         
         // Set accuracy based on difficulty
         native.setPedAccuracy(pedScriptId, 50);
         native.setPedShootRate(pedScriptId, 500);
+        
+        // Make them run to player first, then combat
+        native.taskGoToEntity(pedScriptId, alt.Player.local.scriptID, -1, 10.0, 3.0, 0, 0);
+        
+        // After a moment, switch to combat task
+        alt.setTimeout(() => {
+            if (ped.valid) {
+                native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);
+            }
+        }, 2000);
     }, 500); // Increased timeout to allow proper sync
 }
 }
