@@ -106,17 +106,21 @@ function onSpawnWave(pedId: number, weaponHash: number): void {
         native.giveWeaponToPed(pedScriptId, weaponHash, 9999, false, true);
         native.setCurrentPedWeapon(pedScriptId, weaponHash, true);
         
-        // Set relationship to hate player
+        // Set relationship to hate player - AGGRESSIVE
         native.setPedRelationshipGroupHash(pedScriptId, native.getHashKey('HATES_PLAYER'));
+        native.setRelationshipBetweenGroups(5, native.getHashKey('HATES_PLAYER'), native.getHashKey('PLAYER')); // Hate
+        native.setRelationshipBetweenGroups(5, native.getHashKey('PLAYER'), native.getHashKey('HATES_PLAYER')); // Hate
         
-        // Make them VERY aggressive
-        native.setPedFleeAttributes(pedScriptId, 0, false);
+        // Make them VERY aggressive and fearless
+        native.setPedFleeAttributes(pedScriptId, 0, false); // Never flee
         native.setPedCombatAttributes(pedScriptId, 46, true); // Always fight
         native.setPedCombatAttributes(pedScriptId, 0, false); // Can use vehicles
         native.setPedCombatAttributes(pedScriptId, 2, true); // Can do drivebys
         native.setPedCombatAttributes(pedScriptId, 3, false); // Leave vehicles
         native.setPedCombatAttributes(pedScriptId, 5, false); // Don't use cover - more aggressive
         native.setPedCombatAttributes(pedScriptId, 17, false); // Always fight
+        native.setPedCombatAttributes(pedScriptId, 1, true); // Can use cover - but disabled above
+        native.setPedCombatAttributes(pedScriptId, 58, true); // Disable all fears
         native.setPedCombatMovement(pedScriptId, 3); // Very aggressive movement
         native.setPedCombatRange(pedScriptId, 2); // Long range
         native.setPedCombatAbility(pedScriptId, 2); // Very good combat ability
@@ -124,9 +128,15 @@ function onSpawnWave(pedId: number, weaponHash: number): void {
         native.setPedSeeingRange(pedScriptId, 100.0); // Can see player from far
         native.setPedHearingRange(pedScriptId, 100.0); // Can hear player from far
         
+        // Prevent fleeing and make brave
+        native.setBlockingOfNonTemporaryEvents(pedScriptId, true); // Ignore distractions
+        native.setPedConfigFlag(pedScriptId, 281, true); // No writhe
+        native.setPedConfigFlag(pedScriptId, 208, true); // Disable shocking events
+        
         // Set accuracy and shooting
         native.setPedAccuracy(pedScriptId, 70); // Increased accuracy
         native.setPedShootRate(pedScriptId, 700); // Faster shooting
+        native.setPedFiringPattern(pedScriptId, 0xC6EE6B4C); // Full auto pattern
         
         // Make them sprint to player immediately
         native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);

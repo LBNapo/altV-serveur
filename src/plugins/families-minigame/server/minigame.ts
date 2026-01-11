@@ -39,32 +39,46 @@ function startServerSideDeathCheck(session: MinigameSession): void {
         // Check each enemy ped
         for (let i = session.enemies.length - 1; i >= 0; i--) {
             const ped = session.enemies[i];
-            // Check if ped is dead - must be valid AND have 0 health (not just created)
-            if (ped.valid && ped.health > 0 && ped.maxHealth > 0) {
-                // Ped is alive and properly initialized, skip
+            
+            // Skip if ped is not yet initialized (maxHealth not set)
+            if (!ped.valid) {
+                console.log(`[Families] Server: Ped ${ped.id} is not valid, removing`);
+                session.enemies.splice(i, 1);
+                alt.emitClient(session.player, 'families:remove-blip', ped.id);
                 continue;
             }
             
-            if (!ped.valid || (ped.maxHealth > 0 && ped.health === 0)) {
-                console.log(`[Families] Server detected dead ped ${ped.id}`);
-                session.enemies.splice(i, 1);
-                session.kills++;
-
-                // Calculate XP reward
-                const baseXp = XP_CONFIG.xpPerKill;
-                const waveMultiplier = Math.pow(XP_CONFIG.xpMultiplierPerWave, session.currentWave - 1);
-                const xpReward = Math.floor(baseXp * waveMultiplier);
-
-                addXp(session.player, xpReward);
-
-                messenger.message.send(session.player, {
-                    type: 'info',
-                    content: `+${xpReward} XP (${session.enemies.length} restants)`,
-                });
-                
-                // Notify client to remove blip
-                alt.emitClient(session.player, 'families:remove-blip', ped.id);
+            // Skip if ped hasn't been initialized yet (maxHealth is still 0)
+            if (ped.maxHealth === 0) {
+                // Ped not yet initialized, skip
+                continue;
             }
+            
+            // Check if ped is alive
+            if (ped.health > 0) {
+                // Ped is alive, skip
+                continue;
+            }
+            
+            // Ped is dead (valid, initialized, health === 0)
+            console.log(`[Families] Server detected dead ped ${ped.id}`);
+            session.enemies.splice(i, 1);
+            session.kills++;
+
+            // Calculate XP reward
+            const baseXp = XP_CONFIG.xpPerKill;
+            const waveMultiplier = Math.pow(XP_CONFIG.xpMultiplierPerWave, session.currentWave - 1);
+            const xpReward = Math.floor(baseXp * waveMultiplier);
+
+            addXp(session.player, xpReward);
+
+            messenger.message.send(session.player, {
+                type: 'info',
+                content: `+${xpReward} XP (${session.enemies.length} restants)`,
+            });
+            
+            // Notify client to remove blip
+            alt.emitClient(session.player, 'families:remove-blip', ped.id);
         }
 
         // Check if wave is complete
