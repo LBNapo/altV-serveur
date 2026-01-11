@@ -107,9 +107,9 @@ civilianWaveStart: 5       // Civils à partir de la vague N
 
 ## Zone de Jeu
 
-- Centre: (-57.0, -1838.0, 26.0)
+- Centre: (120.0, -1930.0, 21.0)
 - Rayon: 150 mètres
-- Quartier: Grove Street / Families
+- Quartier: Forum Drive / Families
 
 ## Ennemis
 
