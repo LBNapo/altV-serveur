@@ -39,7 +39,13 @@ function startServerSideDeathCheck(session: MinigameSession): void {
         // Check each enemy ped
         for (let i = session.enemies.length - 1; i >= 0; i--) {
             const ped = session.enemies[i];
-            if (!ped.valid || ped.health === 0) {
+            // Check if ped is dead - must be valid AND have 0 health (not just created)
+            if (ped.valid && ped.health > 0 && ped.maxHealth > 0) {
+                // Ped is alive and properly initialized, skip
+                continue;
+            }
+            
+            if (!ped.valid || (ped.maxHealth > 0 && ped.health === 0)) {
                 console.log(`[Families] Server detected dead ped ${ped.id}`);
                 session.enemies.splice(i, 1);
                 session.kills++;
@@ -55,6 +61,9 @@ function startServerSideDeathCheck(session: MinigameSession): void {
                     type: 'info',
                     content: `+${xpReward} XP (${session.enemies.length} restants)`,
                 });
+                
+                // Notify client to remove blip
+                alt.emitClient(session.player, 'families:remove-blip', ped.id);
             }
         }
 
