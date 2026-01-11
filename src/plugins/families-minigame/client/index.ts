@@ -111,42 +111,41 @@ function onSpawnWave(pedId: number, weaponHash: number): void {
 
 /**
  * Start checking for ped deaths
+ * NOTE: This is now a backup to server-side detection
+ * Client-side detection is disabled to prevent double-counting
  */
 function startPedDeathCheck(): void {
     if (checkInterval) {
         alt.clearInterval(checkInterval);
     }
 
+    let checkCount = 0;
+
     checkInterval = alt.setInterval(() => {
         if (!minigameActive) return;
 
-        console.log(`Checking ${pedTargets.size} tracked peds...`);
+        // Log every 10 checks (every 5 seconds) to reduce spam
+        checkCount++;
+        const shouldLog = checkCount % 10 === 0;
 
-        // Check each tracked ped
+        if (shouldLog) {
+            console.log(`[Families Client] Tracking ${pedTargets.size} peds...`);
+        }
+
+        // Still track peds for potential future client-side features
         pedTargets.forEach((ped, pedId) => {
             if (!ped.valid) {
-                console.log(`Ped ${pedId} is no longer valid, removing`);
+                if (shouldLog) console.log(`Ped ${pedId} is no longer valid, removing from tracking`);
                 pedTargets.delete(pedId);
-                
-                // Check if it's a civilian
                 if (civilianPeds.has(pedId)) {
                     civilianPeds.delete(pedId);
-                    alt.emitServer(FamiliesMinigameEvents.toServer.civilianKilled, pedId);
-                } else {
-                    console.log(`Emitting enemy killed for ped ${pedId}`);
-                    alt.emitServer(FamiliesMinigameEvents.toServer.enemyKilled, pedId);
                 }
             } else if (native.isPedDeadOrDying(ped.scriptID, true)) {
-                console.log(`Ped ${pedId} is dead or dying`);
+                if (shouldLog) console.log(`Ped ${pedId} is dead or dying`);
+                // Don't emit - server handles it
                 pedTargets.delete(pedId);
-                
-                // Check if it's a civilian
                 if (civilianPeds.has(pedId)) {
                     civilianPeds.delete(pedId);
-                    alt.emitServer(FamiliesMinigameEvents.toServer.civilianKilled, pedId);
-                } else {
-                    console.log(`Emitting enemy killed for ped ${pedId}`);
-                    alt.emitServer(FamiliesMinigameEvents.toServer.enemyKilled, pedId);
                 }
             }
         });
