@@ -25,6 +25,7 @@ interface MinigameSession {
     civilians: alt.Ped[];
     startTime: number;
     checkInterval?: number;
+    spawningWave: boolean; // Flag to prevent death check during spawn
 }
 
 const activeSessions = new Map<number, MinigameSession>();
@@ -35,6 +36,12 @@ const activeSessions = new Map<number, MinigameSession>();
 function startServerSideDeathCheck(session: MinigameSession): void {
     session.checkInterval = alt.setInterval(() => {
         if (!session.active) return;
+        
+        // Skip death check if currently spawning a wave
+        if (session.spawningWave) {
+            console.log(`[Families] Server: Skipping death check - wave is spawning`);
+            return;
+        }
 
         // Check each enemy ped
         for (let i = session.enemies.length - 1; i >= 0; i--) {
@@ -127,6 +134,7 @@ export async function startMinigame(player: alt.Player): Promise<void> {
         vehicles: [],
         civilians: [],
         startTime: Date.now(),
+        spawningWave: false,
     };
 
     activeSessions.set(player.id, session);
@@ -229,6 +237,9 @@ function giveWeaponsForLevel(player: alt.Player, level: number): void {
  */
 function spawnWave(player: alt.Player, session: MinigameSession): void {
     if (!session.active) return;
+    
+    // Set flag to prevent death check during spawn
+    session.spawningWave = true;
 
     const wave = session.currentWave;
     const enemyCount = Math.floor(WAVE_CONFIG.enemiesPerWave * Math.pow(WAVE_CONFIG.enemyScaling, wave - 1));
@@ -245,7 +256,10 @@ function spawnWave(player: alt.Player, session: MinigameSession): void {
     // Spawn enemies around the zone - SYNCHRONOUSLY to avoid wave skip
     console.log(`[Families] Starting spawn of ${enemyCount} enemies for wave ${wave}`);
     for (let i = 0; i < enemyCount; i++) {
-        if (!session.active) return;
+        if (!session.active) {
+            session.spawningWave = false;
+            return;
+        }
 
         const angle = (Math.PI * 2 * i) / enemyCount;
         const distance = 20 + Math.random() * 30;
@@ -274,6 +288,12 @@ function spawnWave(player: alt.Player, session: MinigameSession): void {
     }
     
     console.log(`[Families] Wave ${wave} spawn complete. Total enemies: ${session.enemies.length}`);
+    
+    // Unset spawning flag after a short delay to allow peds to fully initialize
+    setTimeout(() => {
+        session.spawningWave = false;
+        console.log(`[Families] Wave ${wave} fully initialized, death check re-enabled`);
+    }, 2000);
 
     // Spawn vehicle every 5 waves
     if (wave % WAVE_CONFIG.vehicleWaveInterval === 0) {
@@ -393,16 +413,16 @@ export async function onEnemyKilled(player: alt.Player, pedId: number): Promise<
         
         messenger.message.send(player, {
             type: 'info',
-            content: `✅ Vague ${session.currentWave - 1} terminée!`,
+            content: `✅ Vague ${session.currentWave - 1} terminée! Prochaine vague dans 5s...`,
         });
 
-        // Spawn next wave after delay
+        // Spawn next wave after 5 second delay to prevent wave skipping
         setTimeout(() => {
             if (session.active) {
                 console.log(`[Families] Spawning wave ${session.currentWave}`);
                 spawnWave(player, session);
             }
-        }, 3000);
+        }, 5000);
     }
 }
 
