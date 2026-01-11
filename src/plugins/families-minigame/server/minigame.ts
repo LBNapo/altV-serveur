@@ -24,9 +24,60 @@ interface MinigameSession {
     vehicles: alt.Vehicle[];
     civilians: alt.Ped[];
     startTime: number;
+    checkInterval?: number;
 }
 
 const activeSessions = new Map<number, MinigameSession>();
+
+/**
+ * Start server-side death checking for peds (backup method)
+ */
+function startServerSideDeathCheck(session: MinigameSession): void {
+    session.checkInterval = alt.setInterval(() => {
+        if (!session.active) return;
+
+        // Check each enemy ped
+        for (let i = session.enemies.length - 1; i >= 0; i--) {
+            const ped = session.enemies[i];
+            if (!ped.valid || ped.health === 0) {
+                console.log(`[Families] Server detected dead ped ${ped.id}`);
+                session.enemies.splice(i, 1);
+                session.kills++;
+
+                // Calculate XP reward
+                const baseXp = XP_CONFIG.xpPerKill;
+                const waveMultiplier = Math.pow(XP_CONFIG.xpMultiplierPerWave, session.currentWave - 1);
+                const xpReward = Math.floor(baseXp * waveMultiplier);
+
+                addXp(session.player, xpReward);
+
+                messenger.message.send(session.player, {
+                    type: 'info',
+                    content: `+${xpReward} XP (${session.enemies.length} restants)`,
+                });
+            }
+        }
+
+        // Check if wave is complete
+        if (session.enemies.length === 0 && session.active) {
+            console.log(`[Families] Server: Wave ${session.currentWave} completed!`);
+            session.currentWave++;
+            
+            messenger.message.send(session.player, {
+                type: 'info',
+                content: `✅ Vague ${session.currentWave - 1} terminée!`,
+            });
+
+            // Spawn next wave after delay
+            setTimeout(() => {
+                if (session.active) {
+                    console.log(`[Families] Server: Spawning wave ${session.currentWave}`);
+                    spawnWave(session.player, session);
+                }
+            }, 3000);
+        }
+    }, 1000); // Check every second
+}
 
 /**
  * Start minigame for a player
@@ -56,6 +107,9 @@ export async function startMinigame(player: alt.Player): Promise<void> {
     };
 
     activeSessions.set(player.id, session);
+
+    // Start server-side death checking as backup
+    startServerSideDeathCheck(session);
 
     // Teleport player to minigame zone
     player.pos = new alt.Vector3(
@@ -92,6 +146,12 @@ export function stopMinigame(player: alt.Player, showStats: boolean = true): voi
     if (!session) return;
 
     session.active = false;
+
+    // Stop server-side death check
+    if (session.checkInterval) {
+        alt.clearInterval(session.checkInterval);
+        session.checkInterval = undefined;
+    }
 
     // Cleanup enemies
     session.enemies.forEach(ped => {
