@@ -416,12 +416,9 @@ export function onPlayerDeath(player: alt.Player): void {
     const session = activeSessions.get(player.id);
     if (!session) return;
 
-    messenger.message.send(player, {
-        type: 'warning',
-        content: '💀 Vous êtes mort!',
-    });
-
-    stopMinigame(player, true);
+    // Just log the death, don't stop the minigame
+    // Client will handle respawn countdown
+    console.log(`[Families] Player ${player.name} died`);
 }
 
 // Listen for player disconnect

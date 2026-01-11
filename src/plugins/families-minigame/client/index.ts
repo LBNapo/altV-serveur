@@ -9,6 +9,8 @@ let checkInterval: number | undefined;
 let pedTargets: Map<number, alt.Ped> = new Map();
 let civilianPeds: Set<number> = new Set();
 let boundaryMarker: number | undefined;
+let pedBlips: Map<number, number> = new Map(); // Track blips for each ped
+let respawnTimer: number | undefined;
 
 /**
  * Start the minigame
@@ -60,10 +62,24 @@ function stopMinigame(): void {
         boundaryMarker = undefined;
     }
 
+    // Remove all ped blips
+    pedBlips.forEach((blipId) => {
+        if (native.doesBlipExist(blipId)) {
+            native.removeBlip(blipId);
+        }
+    });
+    pedBlips.clear();
+
     // Stop checking
     if (checkInterval) {
         alt.clearInterval(checkInterval);
         checkInterval = undefined;
+    }
+
+    // Clear respawn timer
+    if (respawnTimer) {
+        alt.clearInterval(respawnTimer);
+        respawnTimer = undefined;
     }
 
     // Clear tracking
@@ -77,19 +93,31 @@ function stopMinigame(): void {
  * Draw boundary marker (green circle)
  */
 function drawBoundaryMarker(): void {
-    // Create a green checkpoint ring at ground level to show the boundary
-    boundaryMarker = native.createCheckpoint(
-        45, // Ring checkpoint type
-        MINIGAME_ZONE.center.x,
-        MINIGAME_ZONE.center.y,
-        MINIGAME_ZONE.center.z,
-        MINIGAME_ZONE.center.x,
-        MINIGAME_ZONE.center.y,
-        MINIGAME_ZONE.center.z + 2,
-        MINIGAME_ZONE.radius * 2, // Diameter
-        0, 255, 0, 100, // Green with transparency
-        0
-    );
+    // Use everyTick to draw the marker every frame for visibility
+    alt.everyTick(() => {
+        if (!minigameActive) return;
+
+        // Draw a large green circle on the ground
+        native.drawMarker(
+            1, // Cylinder marker
+            MINIGAME_ZONE.center.x,
+            MINIGAME_ZONE.center.y,
+            MINIGAME_ZONE.center.z - 1.0, // Slightly below ground
+            0, 0, 0, // Direction
+            0, 0, 0, // Rotation
+            MINIGAME_ZONE.radius * 2, // Scale X (diameter)
+            MINIGAME_ZONE.radius * 2, // Scale Y (diameter)
+            2.0, // Scale Z (height)
+            0, 255, 0, 100, // RGBA - Green with transparency
+            false, // Bob up and down
+            true, // Face camera
+            2, // Rotation
+            false, // Rotate
+            null, // Texture dict
+            null, // Texture name
+            false // Draw on entities
+        );
+    });
 }
 
 /**
@@ -121,27 +149,37 @@ function onSpawnWave(pedId: number, weaponHash: number): void {
         // Set relationship to hate player
         native.setPedRelationshipGroupHash(pedScriptId, native.getHashKey('HATES_PLAYER'));
         
-        // Make them not flee and always fight
+        // Make them VERY aggressive
         native.setPedFleeAttributes(pedScriptId, 0, false);
         native.setPedCombatAttributes(pedScriptId, 46, true); // Always fight
-        native.setPedCombatAttributes(pedScriptId, 5, true); // Can use cover
+        native.setPedCombatAttributes(pedScriptId, 0, false); // Can use vehicles
+        native.setPedCombatAttributes(pedScriptId, 2, true); // Can do drivebys
+        native.setPedCombatAttributes(pedScriptId, 3, false); // Leave vehicles
+        native.setPedCombatAttributes(pedScriptId, 5, false); // Don't use cover - more aggressive
+        native.setPedCombatAttributes(pedScriptId, 17, false); // Always fight
         native.setPedCombatMovement(pedScriptId, 3); // Very aggressive movement
         native.setPedCombatRange(pedScriptId, 2); // Long range
         native.setPedCombatAbility(pedScriptId, 2); // Very good combat ability
+        native.setPedAlertness(pedScriptId, 3); // Maximum alertness
+        native.setPedSeeingRange(pedScriptId, 100.0); // Can see player from far
+        native.setPedHearingRange(pedScriptId, 100.0); // Can hear player from far
         
-        // Set accuracy based on difficulty
-        native.setPedAccuracy(pedScriptId, 50);
-        native.setPedShootRate(pedScriptId, 500);
+        // Set accuracy and shooting
+        native.setPedAccuracy(pedScriptId, 70); // Increased accuracy
+        native.setPedShootRate(pedScriptId, 700); // Faster shooting
         
-        // Make them run to player first, then combat
-        native.taskGoToEntity(pedScriptId, alt.Player.local.scriptID, -1, 10.0, 3.0, 0, 0);
+        // Make them sprint to player immediately
+        native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);
         
-        // After a moment, switch to combat task
-        alt.setTimeout(() => {
-            if (ped.valid) {
-                native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);
-            }
-        }, 2000);
+        // Create a green blip for this ped
+        const blip = native.addBlipForEntity(pedScriptId);
+        native.setBlipSprite(blip, 1); // Default blip
+        native.setBlipColour(blip, 2); // Green color
+        native.setBlipScale(blip, 0.8);
+        native.setBlipAsShortRange(blip, false);
+        native.showHeadingIndicatorOnBlip(blip, false);
+        pedBlips.set(pedId, blip);
+        
     }, 500); // Increased timeout to allow proper sync
 }
 }
@@ -169,11 +207,19 @@ function startPedDeathCheck(): void {
             console.log(`[Families Client] Tracking ${pedTargets.size} peds...`);
         }
 
-        // Still track peds for potential future client-side features
+        // Still track peds and remove blips when they die
         pedTargets.forEach((ped, pedId) => {
             if (!ped.valid) {
                 if (shouldLog) console.log(`Ped ${pedId} is no longer valid, removing from tracking`);
                 pedTargets.delete(pedId);
+                
+                // Remove blip
+                const blipId = pedBlips.get(pedId);
+                if (blipId && native.doesBlipExist(blipId)) {
+                    native.removeBlip(blipId);
+                }
+                pedBlips.delete(pedId);
+                
                 if (civilianPeds.has(pedId)) {
                     civilianPeds.delete(pedId);
                 }
@@ -181,6 +227,14 @@ function startPedDeathCheck(): void {
                 if (shouldLog) console.log(`Ped ${pedId} is dead or dying`);
                 // Don't emit - server handles it
                 pedTargets.delete(pedId);
+                
+                // Remove blip
+                const blipId = pedBlips.get(pedId);
+                if (blipId && native.doesBlipExist(blipId)) {
+                    native.removeBlip(blipId);
+                }
+                pedBlips.delete(pedId);
+                
                 if (civilianPeds.has(pedId)) {
                     civilianPeds.delete(pedId);
                 }
@@ -189,10 +243,69 @@ function startPedDeathCheck(): void {
 
         // Check if player is dead
         if (native.isPedDeadOrDying(alt.Player.local.scriptID, false)) {
-            alt.emitServer(FamiliesMinigameEvents.toServer.playerDied);
-            stopMinigame();
+            handlePlayerDeath();
         }
     }, 500);
+}
+
+/**
+ * Handle player death with countdown and respawn
+ */
+function handlePlayerDeath(): void {
+    if (!minigameActive) return;
+
+    // Notify server
+    alt.emitServer(FamiliesMinigameEvents.toServer.playerDied);
+    
+    let countdown = 5;
+    
+    // Show countdown
+    respawnTimer = alt.setInterval(() => {
+        // Display countdown on screen
+        native.beginTextCommandPrint('STRING');
+        native.addTextComponentSubstringPlayerName(`~r~Respawn dans ${countdown}s...`);
+        native.endTextCommandPrint(1000, true);
+        
+        countdown--;
+        
+        if (countdown < 0) {
+            // Clear timer
+            if (respawnTimer) {
+                alt.clearInterval(respawnTimer);
+                respawnTimer = undefined;
+            }
+            
+            // Respawn player
+            respawnPlayer();
+        }
+    }, 1000);
+}
+
+/**
+ * Respawn player at spawn location
+ */
+function respawnPlayer(): void {
+    if (!minigameActive) return;
+    
+    // Revive player
+    if (native.isPedDeadOrDying(alt.Player.local.scriptID, false)) {
+        native.networkResurrectLocalPlayer(
+            MINIGAME_ZONE.center.x,
+            MINIGAME_ZONE.center.y,
+            MINIGAME_ZONE.center.z,
+            0.0, // heading
+            true, // unknown
+            false // unknown
+        );
+    }
+    
+    // Restore health and armor
+    native.setEntityHealth(alt.Player.local.scriptID, 200, 0);
+    native.setPedArmour(alt.Player.local.scriptID, 100);
+    
+    // Reapply effects
+    native.setPlayerMeleeWeaponDamageModifier(alt.Player.local.scriptID, 2.0);
+    native.setPlayerWeaponDamageModifier(alt.Player.local.scriptID, 1.5);
 }
 
 /**
