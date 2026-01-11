@@ -266,14 +266,25 @@ function spawnCivilians(player: alt.Player, session: MinigameSession): void {
  */
 export async function onEnemyKilled(player: alt.Player, pedId: number): Promise<void> {
     const session = activeSessions.get(player.id);
-    if (!session || !session.active) return;
+    if (!session || !session.active) {
+        console.log(`[Families] No active session for player ${player.name}`);
+        return;
+    }
+
+    console.log(`[Families] Enemy killed event received for ped ${pedId}`);
+    console.log(`[Families] Current enemies: ${session.enemies.length}`);
 
     // Find and remove the ped
     const pedIndex = session.enemies.findIndex(p => p.id === pedId);
-    if (pedIndex === -1) return;
+    if (pedIndex === -1) {
+        console.log(`[Families] Ped ${pedId} not found in enemies list`);
+        return;
+    }
 
     session.enemies.splice(pedIndex, 1);
     session.kills++;
+
+    console.log(`[Families] Kill registered! Remaining enemies: ${session.enemies.length}`);
 
     // Calculate XP reward
     const baseXp = XP_CONFIG.xpPerKill;
@@ -284,11 +295,12 @@ export async function onEnemyKilled(player: alt.Player, pedId: number): Promise<
 
     messenger.message.send(player, {
         type: 'info',
-        content: `+${xpReward} XP`,
+        content: `+${xpReward} XP (${session.enemies.length} restants)`,
     });
 
     // Check if wave is complete
     if (session.enemies.length === 0) {
+        console.log(`[Families] Wave ${session.currentWave} completed!`);
         session.currentWave++;
         
         messenger.message.send(player, {
@@ -299,6 +311,7 @@ export async function onEnemyKilled(player: alt.Player, pedId: number): Promise<
         // Spawn next wave after delay
         setTimeout(() => {
             if (session.active) {
+                console.log(`[Families] Spawning wave ${session.currentWave}`);
                 spawnWave(player, session);
             }
         }, 3000);
