@@ -41,14 +41,14 @@ messenger.commands.register({
 
 // Commande admin pour donner de l'XP
 messenger.commands.register({
-    name: '/givexp',
+    name: '/giveexp',
     desc: 'Donne de l\'XP à un joueur (admin).',
     options: { permissions: ['admin'] },
     async callback(player, targetId: string, amount: string) {
         if (!targetId || !amount) {
             messenger.message.send(player, {
                 type: 'warning',
-                content: 'Usage: /givexp [player_id] [amount]',
+                content: 'Usage: /giveexp [player_id] [amount]',
             });
             return;
         }
@@ -121,15 +121,18 @@ messenger.commands.register({
         // Reset XP and level to 1
         await character.set('xp', 0);
         await character.set('level', 1);
+        
+        // Remove all weapons from player
+        target.removeAllWeapons();
 
         messenger.message.send(player, {
             type: 'info',
-            content: `Level de ${target.name} réinitialisé à 1.`,
+            content: `Level de ${target.name} réinitialisé à 1 et armes retirées.`,
         });
 
         messenger.message.send(target, {
             type: 'warning',
-            content: `Votre niveau a été réinitialisé à 1 par un administrateur!`,
+            content: `Votre niveau a été réinitialisé à 1 et vos armes ont été retirées par un administrateur!`,
         });
     },
 });

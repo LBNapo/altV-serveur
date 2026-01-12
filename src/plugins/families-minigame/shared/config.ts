@@ -2,9 +2,16 @@ import * as alt from 'alt-shared';
 
 // Zone du mini-jeu (quartier Families - Forum Drive)
 export const MINIGAME_ZONE = {
-    center: { x: -14.24, y: -1442.61, z: 31.10 } as alt.IVector3,
+    center: { x: -17.84453773498535, y: -1439.5155029296875, z: 31.101558685302734 } as alt.IVector3,
     radius: 50, // 50 mètres de rayon
 };
+
+// Zones bloquées (spawn dans les murs)
+export const BLOCKED_SPAWN_ZONES = [
+    { x: 9.602185249328613, y: -1395.0115966796875, z: 29.281734466552734 },
+    { x: -20.949054718017578, y: -1406.4090576171875, z: 29.37715721130371 },
+    { x: 19.678415298461914, y: -1410.8287353515625, z: 29.249387741088867 },
+];
 
 // Configuration XP
 export const XP_CONFIG = {

@@ -8,6 +8,7 @@ import {
     FAMILIES_PED_MODELS,
     FAMILIES_VEHICLE_MODEL,
     ENEMY_WEAPONS_BY_WAVE,
+    BLOCKED_SPAWN_ZONES,
 } from '../shared/config.js';
 import { FamiliesMinigameEvents } from '../shared/events.js';
 import { addXp, getXpInfo } from './xpSystem.js';
@@ -88,6 +89,12 @@ function startServerSideDeathCheck(session: MinigameSession): void {
             const currentHealth = session.player.health;
             const newHealth = Math.min(currentHealth + 25, 200);
             session.player.health = newHealth;
+            
+            // Give player +50 ammo for current weapon
+            const currentWeapon = session.player.currentWeapon;
+            if (currentWeapon !== 0x00000000) { // Check if player has a weapon equipped
+                session.player.giveWeapon(currentWeapon, 50, false);
+            }
 
             // Calculate XP reward
             const baseXp = XP_CONFIG.xpPerKill;
@@ -98,7 +105,7 @@ function startServerSideDeathCheck(session: MinigameSession): void {
 
             messenger.message.send(session.player, {
                 type: 'info',
-                content: `+${xpReward} XP | +25 HP (${session.enemies.length} restants)`,
+                content: `+${xpReward} XP | +25 HP | +50 munitions (${session.enemies.length} restants)`,
             });
             
             // Notify client to remove blip
@@ -307,11 +314,33 @@ function spawnWave(player: alt.Player, session: MinigameSession): void {
             return;
         }
 
-        const angle = (Math.PI * 2 * i) / enemyCount;
-        const distance = 20 + Math.random() * 30;
-        const x = MINIGAME_ZONE.center.x + Math.cos(angle) * distance;
-        const y = MINIGAME_ZONE.center.y + Math.sin(angle) * distance;
-        const z = MINIGAME_ZONE.center.z;
+        // Find a valid spawn position (not in blocked zones)
+        let x: number, y: number, z: number;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        do {
+            const angle = (Math.PI * 2 * i) / enemyCount + (Math.random() * 0.5 - 0.25);
+            const distance = 20 + Math.random() * 30;
+            x = MINIGAME_ZONE.center.x + Math.cos(angle) * distance;
+            y = MINIGAME_ZONE.center.y + Math.sin(angle) * distance;
+            z = MINIGAME_ZONE.center.z;
+            attempts++;
+            
+            // Check if position is too close to any blocked zone
+            const isTooClose = BLOCKED_SPAWN_ZONES.some(blocked => {
+                const dist = Math.sqrt(
+                    Math.pow(x - blocked.x, 2) + 
+                    Math.pow(y - blocked.y, 2) + 
+                    Math.pow(z - blocked.z, 2)
+                );
+                return dist < 5; // 5 meter safety radius around blocked zones
+            });
+            
+            if (!isTooClose || attempts >= maxAttempts) {
+                break;
+            }
+        } while (true);
 
         const model = FAMILIES_PED_MODELS[Math.floor(Math.random() * FAMILIES_PED_MODELS.length)];
         const ped = new alt.Ped(model, new alt.Vector3(x, y, z), new alt.Vector3(0, 0, 0));
