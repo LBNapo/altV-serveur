@@ -24,7 +24,6 @@ messenger.commands.register({
 messenger.commands.register({
     name: '/families',
     desc: 'Démarre le mini-jeu Families.',
-    options: { permissions: ['moderator'] },
     async callback(player) {
         await startMinigame(player);
     },
@@ -42,8 +41,7 @@ messenger.commands.register({
 // Commande admin pour donner de l'XP
 messenger.commands.register({
     name: '/giveexp',
-    desc: 'Donne de l\'XP à un joueur (admin).',
-    options: { permissions: ['admin'] },
+    desc: 'Donne de l\'XP à un joueur.',
     async callback(player, targetId: string, amount: string) {
         if (!targetId || !amount) {
             messenger.message.send(player, {
@@ -62,7 +60,7 @@ messenger.commands.register({
             return;
         }
 
-        const target = Rebar.get.usePlayerGetter().byID(parseInt(targetId));
+        const target = Rebar.get.usePlayerGetter().byAccount(parseInt(targetId));
         if (!target) {
             messenger.message.send(player, {
                 type: 'warning',
@@ -89,8 +87,7 @@ messenger.commands.register({
 // Commande admin pour réinitialiser le niveau d'un joueur
 messenger.commands.register({
     name: '/clearlevel',
-    desc: 'Réinitialise le niveau d\'un joueur à 1 (admin).',
-    options: { permissions: ['admin'] },
+    desc: 'Réinitialise le niveau d\'un joueur à 1.',
     async callback(player, targetId: string) {
         if (!targetId) {
             messenger.message.send(player, {
@@ -100,7 +97,7 @@ messenger.commands.register({
             return;
         }
 
-        const target = Rebar.get.usePlayerGetter().byID(parseInt(targetId));
+        const target = Rebar.get.usePlayerGetter().byAccount(parseInt(targetId));
         if (!target) {
             messenger.message.send(player, {
                 type: 'warning',

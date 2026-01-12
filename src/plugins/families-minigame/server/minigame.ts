@@ -517,34 +517,29 @@ export async function onCivilianKilled(player: alt.Player, pedId: number): Promi
 }
 
 /**
- * Handle player respawn after death in minigame
- */
-export function onPlayerRespawned(player: alt.Player): void {
-    const session = activeSessions.get(player.id);
-    if (!session || !session.active) return;
-
-    // Re-enable godmode until next kill
-    session.godmodeActive = true;
-    player.invincible = true;
-    
-    messenger.message.send(player, {
-        type: 'info',
-        content: `🛡️ Godmode réactivé jusqu'au prochain kill!`,
-    });
-    
-    console.log(`[Families] Player ${player.name} respawned with godmode`);
-}
-
-/**
- * Handle player death
+ * Handle player death - END minigame, TP to spawn, reset to wave 1
  */
 export function onPlayerDeath(player: alt.Player): void {
     const session = activeSessions.get(player.id);
     if (!session) return;
 
-    // Just log the death, don't stop the minigame
-    // Client will handle respawn countdown
-    console.log(`[Families] Player ${player.name} died`);
+    console.log(`[Families] Player ${player.name} died - ending minigame`);
+    
+    // Stop the minigame
+    stopMinigame(player, false);
+    
+    // Teleport player to spawn location
+    player.pos = new alt.Vector3(MINIGAME_ZONE.center.x, MINIGAME_ZONE.center.y, MINIGAME_ZONE.center.z);
+    
+    // Restore health
+    player.health = 200;
+    player.armour = 100;
+    
+    // Show defeat message
+    messenger.message.send(player, {
+        type: 'warning',
+        content: `💀 Les Families ont gagné, replis dans la maison!`,
+    });
 }
 
 // Listen for player disconnect
@@ -573,8 +568,4 @@ alt.onClient(FamiliesMinigameEvents.toServer.civilianKilled, (player, pedId: num
 
 alt.onClient(FamiliesMinigameEvents.toServer.playerDied, (player) => {
     onPlayerDeath(player);
-});
-
-alt.onClient(FamiliesMinigameEvents.toServer.playerRespawned, (player) => {
-    onPlayerRespawned(player);
 });

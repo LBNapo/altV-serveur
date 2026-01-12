@@ -234,113 +234,18 @@ function startPedDeathCheck(): void {
 }
 
 /**
- * Handle player death with countdown and respawn (GTA-style WASTED screen)
+ * Handle player death - simple notification, server handles the rest
  */
 function handlePlayerDeath(): void {
     if (!minigameActive || deathScreenActive) return;
 
     deathScreenActive = true;
-    deathCountdown = 5;
 
-    // Notify server
+    // Notify server - server will end minigame and TP player
     alt.emitServer(FamiliesMinigameEvents.toServer.playerDied);
     
-    // Use GTA's native wasted screen
-    native.setFadeOutAfterDeath(false); // Don't fade out
-    native.networkSetInSpectatorMode(false, alt.Player.local.scriptID);
-    
-    // Start every-tick render for death screen
-    if (!everyTickHandler) {
-        everyTickHandler = alt.everyTick(() => {
-            if (deathScreenActive) {
-                // Draw WASTED-style text
-                native.setTextFont(4);
-                native.setTextScale(1.5, 1.5);
-                native.setTextColour(255, 0, 0, 255);
-                native.setTextOutline();
-                native.setTextCentre(true);
-                native.beginTextCommandDisplayText('STRING');
-                native.addTextComponentSubstringPlayerName(`WASTED`);
-                native.endTextCommandDisplayText(0.5, 0.3, 0);
-                
-                // Draw countdown
-                native.setTextFont(0);
-                native.setTextScale(0.8, 0.8);
-                native.setTextColour(255, 255, 255, 255);
-                native.setTextCentre(true);
-                native.beginTextCommandDisplayText('STRING');
-                native.addTextComponentSubstringPlayerName(`Respawn dans ${deathCountdown}s`);
-                native.endTextCommandDisplayText(0.5, 0.4, 0);
-            }
-        });
-    }
-    
-    // Countdown timer
-    respawnTimer = alt.setInterval(() => {
-        deathCountdown--;
-        
-        if (deathCountdown < 0) {
-            // Clear timer
-            if (respawnTimer) {
-                alt.clearInterval(respawnTimer);
-                respawnTimer = undefined;
-            }
-            
-            deathScreenActive = false;
-            
-            // Respawn player
-            respawnPlayer();
-        }
-    }, 1000);
-}
-
-/**
- * Respawn player at spawn location
- */
-function respawnPlayer(): void {
-    if (!minigameActive) return;
-    
-    // Revive player using GTA's native respawn
-    native.networkResurrectLocalPlayer(
-        MINIGAME_ZONE.center.x,
-        MINIGAME_ZONE.center.y,
-        MINIGAME_ZONE.center.z,
-        0.0, // heading
-        true, // unknown
-        false // unknown
-    );
-    
-    // Clear any death effects
-    native.clearTimecycleModifier();
-    native.resetScriptRendertarget();
-    
-    // Restore health and armor
-    native.setEntityHealth(alt.Player.local.scriptID, 200, 0);
-    native.setPedArmour(alt.Player.local.scriptID, 100);
-    
-    // Reapply minigame effects
-    native.setPlayerMeleeWeaponDamageModifier(alt.Player.local.scriptID, 2.0);
-    native.setPlayerWeaponDamageModifier(alt.Player.local.scriptID, 1.5);
-    native.animpostfxPlay('RaceTurbo', 0, false);
-    native.setTimecycleModifier('prologue_light');
-    
-    // RE-AGGRO ALL EXISTING PEDS TO PLAYER
-    console.log(`[Families Client] Re-aggroing ${pedTargets.size} peds to player after respawn`);
-    pedTargets.forEach((ped, pedId) => {
-        if (ped.valid) {
-            try {
-                const pedScriptId = ped.scriptID;
-                // Re-task to combat player
-                native.taskCombatPed(pedScriptId, alt.Player.local.scriptID, 0, 16);
-                console.log(`[Families Client] Re-aggroed ped ${pedId} to player`);
-            } catch (e) {
-                console.error(`[Families Client] Failed to re-aggro ped ${pedId}:`, e);
-            }
-        }
-    });
-    
-    // Notify server that player has respawned (for godmode reactivation)
-    alt.emitServer(FamiliesMinigameEvents.toServer.playerRespawned);
+    // Stop the minigame on client
+    stopMinigame();
 }
 
 /**
