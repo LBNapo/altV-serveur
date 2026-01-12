@@ -137,20 +137,20 @@ function onSpawnWave(pedId: number, weaponHash: number): void {
         native.setPedCombatAttributes(pedScriptId, 1, true); // Can use cover - but disabled above
         native.setPedCombatAttributes(pedScriptId, 58, true); // Disable all fears
         native.setPedCombatMovement(pedScriptId, 3); // Very aggressive movement
-        native.setPedCombatRange(pedScriptId, 2); // Long range
+        native.setPedCombatRange(pedScriptId, 3); // Maximum range (0=close, 1=medium, 2=long, 3=very long)
         native.setPedCombatAbility(pedScriptId, 2); // Very good combat ability
         native.setPedAlertness(pedScriptId, 3); // Maximum alertness
-        native.setPedSeeingRange(pedScriptId, 100.0); // Can see player from far
-        native.setPedHearingRange(pedScriptId, 100.0); // Can hear player from far
+        native.setPedSeeingRange(pedScriptId, 150.0); // Can see player from very far
+        native.setPedHearingRange(pedScriptId, 150.0); // Can hear player from very far
         
         // Prevent fleeing and make brave
         native.setBlockingOfNonTemporaryEvents(pedScriptId, true); // Ignore distractions
         native.setPedConfigFlag(pedScriptId, 281, true); // No writhe
         native.setPedConfigFlag(pedScriptId, 208, true); // Disable shocking events
         
-        // Set accuracy and shooting
-        native.setPedAccuracy(pedScriptId, 70); // Increased accuracy
-        native.setPedShootRate(pedScriptId, 700); // Faster shooting
+        // Set accuracy and shooting - MAXIMUM AGGRESSION
+        native.setPedAccuracy(pedScriptId, 100); // Maximum accuracy
+        native.setPedShootRate(pedScriptId, 1000); // Very fast shooting
         native.setPedFiringPattern(pedScriptId, 0xC6EE6B4C); // Full auto pattern
         
         // Make them sprint to player immediately
@@ -338,6 +338,9 @@ function respawnPlayer(): void {
             }
         }
     });
+    
+    // Notify server that player has respawned (for godmode reactivation)
+    alt.emitServer(FamiliesMinigameEvents.toServer.playerRespawned);
 }
 
 /**

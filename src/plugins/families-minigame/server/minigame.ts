@@ -26,6 +26,8 @@ interface MinigameSession {
     startTime: number;
     checkInterval?: number;
     spawningWave: boolean; // Flag to prevent death check during spawn
+    nextWaveScheduled: boolean; // Flag to prevent double scheduling of next wave
+    godmodeActive: boolean; // Flag to track if godmode is active
 }
 
 const activeSessions = new Map<number, MinigameSession>();
@@ -72,6 +74,16 @@ function startServerSideDeathCheck(session: MinigameSession): void {
             session.enemies.splice(i, 1);
             session.kills++;
 
+            // Disable godmode on first kill
+            if (session.godmodeActive) {
+                session.godmodeActive = false;
+                session.player.invincible = false;
+                messenger.message.send(session.player, {
+                    type: 'warning',
+                    content: `⚔️ Godmode désactivé!`,
+                });
+            }
+
             // Calculate XP reward
             const baseXp = XP_CONFIG.xpPerKill;
             const waveMultiplier = Math.pow(XP_CONFIG.xpMultiplierPerWave, session.currentWave - 1);
@@ -89,9 +101,10 @@ function startServerSideDeathCheck(session: MinigameSession): void {
         }
 
         // Check if wave is complete
-        if (session.enemies.length === 0 && session.active) {
+        if (session.enemies.length === 0 && session.active && !session.nextWaveScheduled) {
             console.log(`[Families] Server: Wave ${session.currentWave} completed!`);
             session.currentWave++;
+            session.nextWaveScheduled = true; // Prevent double scheduling
             
             messenger.message.send(session.player, {
                 type: 'info',
@@ -102,6 +115,7 @@ function startServerSideDeathCheck(session: MinigameSession): void {
             setTimeout(() => {
                 if (session.active) {
                     console.log(`[Families] Server: Spawning wave ${session.currentWave}`);
+                    session.nextWaveScheduled = false; // Reset flag before spawning
                     spawnWave(session.player, session);
                 }
             }, 5000);
@@ -135,7 +149,16 @@ export async function startMinigame(player: alt.Player): Promise<void> {
         civilians: [],
         startTime: Date.now(),
         spawningWave: false,
+        nextWaveScheduled: false,
+        godmodeActive: true,
     };
+    
+    // Enable godmode for player
+    player.invincible = true;
+    messenger.message.send(player, {
+        type: 'info',
+        content: `🛡️ Godmode activé jusqu'au 1er kill!`,
+    });
 
     activeSessions.set(player.id, session);
 
@@ -177,6 +200,9 @@ export function stopMinigame(player: alt.Player, showStats: boolean = true): voi
     if (!session) return;
 
     session.active = false;
+    
+    // Disable godmode
+    player.invincible = false;
 
     // Stop server-side death check
     if (session.checkInterval) {
@@ -442,6 +468,25 @@ export async function onCivilianKilled(player: alt.Player, pedId: number): Promi
 }
 
 /**
+ * Handle player respawn after death in minigame
+ */
+export function onPlayerRespawned(player: alt.Player): void {
+    const session = activeSessions.get(player.id);
+    if (!session || !session.active) return;
+
+    // Re-enable godmode until next kill
+    session.godmodeActive = true;
+    player.invincible = true;
+    
+    messenger.message.send(player, {
+        type: 'info',
+        content: `🛡️ Godmode réactivé jusqu'au prochain kill!`,
+    });
+    
+    console.log(`[Families] Player ${player.name} respawned with godmode`);
+}
+
+/**
  * Handle player death
  */
 export function onPlayerDeath(player: alt.Player): void {
@@ -479,4 +524,8 @@ alt.onClient(FamiliesMinigameEvents.toServer.civilianKilled, (player, pedId: num
 
 alt.onClient(FamiliesMinigameEvents.toServer.playerDied, (player) => {
     onPlayerDeath(player);
+});
+
+alt.onClient(FamiliesMinigameEvents.toServer.playerRespawned, (player) => {
+    onPlayerRespawned(player);
 });
