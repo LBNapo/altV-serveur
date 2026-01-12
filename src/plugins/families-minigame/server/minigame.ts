@@ -95,16 +95,16 @@ function startServerSideDeathCheck(session: MinigameSession): void {
             
             messenger.message.send(session.player, {
                 type: 'info',
-                content: `✅ Vague ${session.currentWave - 1} terminée!`,
+                content: `✅ Vague ${session.currentWave - 1} terminée! Prochaine vague dans 5s...`,
             });
 
-            // Spawn next wave after delay
+            // Spawn next wave after 5 second delay to prevent wave skipping
             setTimeout(() => {
                 if (session.active) {
                     console.log(`[Families] Server: Spawning wave ${session.currentWave}`);
                     spawnWave(session.player, session);
                 }
-            }, 3000);
+            }, 5000);
         }
     }, 1000); // Check every second
 }
@@ -406,24 +406,8 @@ export async function onEnemyKilled(player: alt.Player, pedId: number): Promise<
         content: `+${xpReward} XP (${session.enemies.length} restants)`,
     });
 
-    // Check if wave is complete
-    if (session.enemies.length === 0) {
-        console.log(`[Families] Wave ${session.currentWave} completed!`);
-        session.currentWave++;
-        
-        messenger.message.send(player, {
-            type: 'info',
-            content: `✅ Vague ${session.currentWave - 1} terminée! Prochaine vague dans 5s...`,
-        });
-
-        // Spawn next wave after 5 second delay to prevent wave skipping
-        setTimeout(() => {
-            if (session.active) {
-                console.log(`[Families] Spawning wave ${session.currentWave}`);
-                spawnWave(player, session);
-            }
-        }, 5000);
-    }
+    // Wave completion is handled by server-side death check
+    // No need to check here to avoid double spawning
 }
 
 /**
