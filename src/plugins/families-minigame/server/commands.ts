@@ -24,6 +24,7 @@ messenger.commands.register({
 messenger.commands.register({
     name: '/families',
     desc: 'Démarre le mini-jeu Families.',
+    options: { permissions: ['moderator'] },
     async callback(player) {
         await startMinigame(player);
     },
@@ -81,6 +82,54 @@ messenger.commands.register({
         messenger.message.send(target, {
             type: 'info',
             content: `Vous avez reçu ${amountNum} XP!`,
+        });
+    },
+});
+
+// Commande admin pour réinitialiser le niveau d'un joueur
+messenger.commands.register({
+    name: '/clearlevel',
+    desc: 'Réinitialise le niveau d\'un joueur à 1 (admin).',
+    options: { permissions: ['admin'] },
+    async callback(player, targetId: string) {
+        if (!targetId) {
+            messenger.message.send(player, {
+                type: 'warning',
+                content: 'Usage: /clearlevel [player_id]',
+            });
+            return;
+        }
+
+        const target = Rebar.get.usePlayerGetter().byID(parseInt(targetId));
+        if (!target) {
+            messenger.message.send(player, {
+                type: 'warning',
+                content: 'Joueur introuvable.',
+            });
+            return;
+        }
+
+        const character = Rebar.document.character.useCharacter(target);
+        if (!character.isValid()) {
+            messenger.message.send(player, {
+                type: 'warning',
+                content: 'Personnage introuvable.',
+            });
+            return;
+        }
+
+        // Reset XP and level to 1
+        await character.set('xp', 0);
+        await character.set('level', 1);
+
+        messenger.message.send(player, {
+            type: 'info',
+            content: `Level de ${target.name} réinitialisé à 1.`,
+        });
+
+        messenger.message.send(target, {
+            type: 'warning',
+            content: `Votre niveau a été réinitialisé à 1 par un administrateur!`,
         });
     },
 });

@@ -84,6 +84,11 @@ function startServerSideDeathCheck(session: MinigameSession): void {
                 });
             }
 
+            // Heal player +25 HP per kill (cap at 200)
+            const currentHealth = session.player.health;
+            const newHealth = Math.min(currentHealth + 25, 200);
+            session.player.health = newHealth;
+
             // Calculate XP reward
             const baseXp = XP_CONFIG.xpPerKill;
             const waveMultiplier = Math.pow(XP_CONFIG.xpMultiplierPerWave, session.currentWave - 1);
@@ -93,7 +98,7 @@ function startServerSideDeathCheck(session: MinigameSession): void {
 
             messenger.message.send(session.player, {
                 type: 'info',
-                content: `+${xpReward} XP (${session.enemies.length} restants)`,
+                content: `+${xpReward} XP | +25 HP (${session.enemies.length} restants)`,
             });
             
             // Notify client to remove blip
@@ -174,6 +179,21 @@ export async function startMinigame(player: alt.Player): Promise<void> {
 
     // Give weapons based on level
     giveWeaponsForLevel(player, info.level);
+
+    // Spawn Khanjali tank for level 60+ players
+    if (info.level >= 60) {
+        const khanjali = new alt.Vehicle(
+            'khanjali',
+            new alt.Vector3(-24.069974899291992, -1439.2108154296875, 30.653148651123047),
+            new alt.Vector3(0, 0, 0)
+        );
+        session.vehicles.push(khanjali);
+        
+        messenger.message.send(player, {
+            type: 'info',
+            content: `🚁 Khanjali débloqué! (Level 60+)`,
+        });
+    }
 
     // Apply rampage effect on client
     alt.emitClient(player, FamiliesMinigameEvents.toClient.startMinigame, info.level);
