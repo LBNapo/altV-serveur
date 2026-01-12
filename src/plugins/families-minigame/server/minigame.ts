@@ -34,13 +34,20 @@ interface MinigameSession {
 const activeSessions = new Map<number, MinigameSession>();
 
 /**
- * Start server-side death checking for peds (backup method)
+ * Start server-side death checking for peds AND player
  */
 function startServerSideDeathCheck(session: MinigameSession): void {
     session.checkInterval = alt.setInterval(() => {
         if (!session.active) return;
         
-        // Skip death check if currently spawning a wave
+        // Check if player is dead (health <= 0)
+        if (session.player.health <= 0) {
+            console.log(`[Families] Server: Player is dead (health: ${session.player.health})`);
+            onPlayerDeath(session.player);
+            return; // Stop checking after death
+        }
+        
+        // Skip ped death check if currently spawning a wave
         if (session.spawningWave) {
             console.log(`[Families] Server: Skipping death check - wave is spawning`);
             return;
@@ -521,25 +528,31 @@ export async function onCivilianKilled(player: alt.Player, pedId: number): Promi
  */
 export function onPlayerDeath(player: alt.Player): void {
     const session = activeSessions.get(player.id);
-    if (!session) return;
+    if (!session || !session.active) return;
 
     console.log(`[Families] Player ${player.name} died - ending minigame`);
     
-    // Stop the minigame
+    // Stop the minigame first
     stopMinigame(player, false);
     
-    // Teleport player to spawn location
-    player.pos = new alt.Vector3(MINIGAME_ZONE.center.x, MINIGAME_ZONE.center.y, MINIGAME_ZONE.center.z);
-    
-    // Restore health
-    player.health = 200;
-    player.armour = 100;
-    
-    // Show defeat message
-    messenger.message.send(player, {
-        type: 'warning',
-        content: `💀 Les Families ont gagné, replis dans la maison!`,
-    });
+    // Small delay to ensure cleanup is complete
+    alt.setTimeout(() => {
+        if (!player.valid) return;
+        
+        // Teleport player to spawn location
+        player.pos = new alt.Vector3(MINIGAME_ZONE.center.x, MINIGAME_ZONE.center.y, MINIGAME_ZONE.center.z);
+        
+        // Restore health
+        player.spawn(MINIGAME_ZONE.center.x, MINIGAME_ZONE.center.y, MINIGAME_ZONE.center.z, 0);
+        player.health = 200;
+        player.armour = 100;
+        
+        // Show defeat message
+        messenger.message.send(player, {
+            type: 'warning',
+            content: `💀 Les Families ont gagné, replis dans la maison!`,
+        });
+    }, 500);
 }
 
 // Listen for player disconnect
